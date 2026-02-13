@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Calculadora Personal de Insulina 🤎💉</title>
+
+<style>
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f5efe6;
+    color: #4b3832;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 600px;
+    margin: auto;
+    background: #fffaf3;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+h1 {
+    text-align: center;
+    color: #6b4f4f;
+}
+
+input {
+    width: 100%;
+    padding: 8px;
+    margin: 6px 0 12px 0;
+    border-radius: 8px;
+    border: 1px solid #d6cfc7;
+}
+
+button {
+    background-color: #8b6f47;
+    color: white;
+    border: none;
+    padding: 10px;
+    width: 100%;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button:hover {
+    background-color: #6b4f4f;
+}
+
+.result-box {
+    margin-top: 20px;
+    background: #f1e6d6;
+    padding: 15px;
+    border-radius: 12px;
+}
+
+.warning {
+    color: #a94442;
+    font-weight: bold;
+}
+
+.small {
+    font-size: 0.85em;
+    opacity: 0.8;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<h1>Calculadora de Insulina 🤎💉</h1>
+
+<label>Glucosa actual (mg/dL)</label>
+<input type="number" id="glucose">
+
+<label>Carbohidratos (g)</label>
+<input type="number" id="carbs">
+
+<label>Grasas (g)</label>
+<input type="number" id="fat">
+
+<label>Proteínas (g)</label>
+<input type="number" id="protein">
+
+<label>Último bolo (unidades)</label>
+<input type="number" id="lastBolus">
+
+<label>Tiempo desde último bolo (horas)</label>
+<input type="number" step="0.1" id="timeBolus">
+
+<button onclick="calcular()">Calcular dosis 🤎</button>
+
+<div class="result-box" id="results"></div>
+
+<div class="small">
+ISF: 40 mg/dL | ICR: 10g | DIA: 4h | Target: 90 mg/dL
+</div>
+</div>
+
+<script>
+// Parámetros fijos personalizados
+const ISF = 40;
+const ICR = 10;
+const DIA = 4;
+const TARGET = 90;
+
+// Redondeo a 0.5 unidades
+function roundHalf(num) {
+    return Math.round(num * 2) / 2;
+}
+
+// Corrección
+function calcularCorreccion(glucose) {
+    if (glucose < 70) return 0;
+    if (glucose <= TARGET) return 0;
+    return (glucose - TARGET) / ISF;
+}
+
+// Cálculo carbohidratos necesarios si hipoglucemia
+function calcularCarbsNecesarios(glucose) {
+    if (glucose >= 70) return 0;
+    return ((TARGET - glucose) / ISF) * ICR;
+}
+
+// Insulina por carbohidratos
+function calcularComida(carbs) {
+    return carbs / ICR;
+}
+
+// Ajuste FPU adaptado a lapicera
+function calcularFPU(fat, protein) {
+    let calories = (fat * 9) + (protein * 4);
+    let FPU = calories / 100;
+    let unidadesTeoricas = (FPU * 10) / ICR;
+    return unidadesTeoricas * 0.5; // 50% por ser lapicera
+}
+
+// Modelo no lineal simplificado tipo Walsh
+function calcularIOB(lastBolus, time) {
+    if (time >= DIA) return 0;
+    let restante = lastBolus * Math.pow((1 - (time / DIA)), 2);
+    return restante;
+}
+
+function calcular() {
+    let glucose = parseFloat(document.getElementById("glucose").value) || 0;
+    let carbs = parseFloat(document.getElementById("carbs").value) || 0;
+    let fat = parseFloat(document.getElementById("fat").value) || 0;
+    let protein = parseFloat(document.getElementById("protein").value) || 0;
+    let lastBolus = parseFloat(document.getElementById("lastBolus").value) || 0;
+    let time = parseFloat(document.getElementById("timeBolus").value) || 0;
+
+    let correccion = calcularCorreccion(glucose);
+    let carbsNecesarios = calcularCarbsNecesarios(glucose);
+    let comida = calcularComida(carbs);
+    let ajuste = calcularFPU(fat, protein);
+    let IOB = calcularIOB(lastBolus, time);
+
+    let total = correccion - IOB + comida + ajuste;
+    if (total < 0) total = 0;
+
+    total = roundHalf(total);
+
+    let warning = "";
+
+    if (glucose < 70) {
+        warning = "⚠️ Glucosa baja. Consumir aproximadamente " + 
+        Math.round(carbsNecesarios) + 
+        " g de carbohidratos antes de aplicar insulina.";
+    }
+
+    if (glucose > 250) {
+        warning = "⚠️ Glucosa alta. Considerar medir cetonas.";
+    }
+
+    document.getElementById("results").innerHTML = `
+        <b>Resultado 🧮</b><br><br>
+        Corrección: ${roundHalf(correccion)} u<br>
+        Insulina por comida: ${roundHalf(comida)} u<br>
+        Ajuste grasa/proteína: ${roundHalf(ajuste)} u<br>
+        Insulina activa estimada (IOB): ${roundHalf(IOB)} u<br><br>
+        <b>Dosis total sugerida: ${total} unidades 💉</b><br><br>
+        <span class="warning">${warning}</span>
+    `;
+
+    guardarLog(glucose, total);
+}
+
+// Guardar logs en localStorage
+function guardarLog(glucose, total) {
+    let logs = JSON.parse(localStorage.getItem("logs")) || [];
+    logs.push({fecha: new Date(), glucosa: glucose, dosis: total});
+    localStorage.setItem("logs", JSON.stringify(logs));
+}
+</script>
+
+</body>
+</html>
