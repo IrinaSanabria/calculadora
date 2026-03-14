@@ -3,213 +3,354 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Calculadora🤎</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Questrial&family=Forum&display=swap" rel="stylesheet">
+<title>Calculadora de Insulina</title>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Forum&family=Questrial&display=swap" rel="stylesheet">
 
 <style>
-body {
-    margin: 0;
-    background-color: #f5efe6;
-    font-family: 'Questrial', sans-serif;
-    display: flex;
-    justify-content: center;
+
+/* ==============================
+   COLORES
+============================== */
+
+:root{
+--bg:#f4ede6;
+--card:#fffaf4;
+--primary:#8b6f54;
+--accent:#b79b7f;
+--text:#4a3a2a;
+--shadow:0 10px 24px rgba(0,0,0,0.08);
 }
 
-.app {
-    width: 100%;
-    max-width: 430px;
-    min-height: 100vh;
-    background: #fffaf3;
-    padding: 20px;
-    box-sizing: border-box;
+/* ==============================
+   BASE
+============================== */
+
+body{
+margin:0;
+background:var(--bg);
+font-family:'Questrial',sans-serif;
+color:var(--text);
+display:flex;
+align-items:center;
+justify-content:center;
+min-height:100vh;
 }
 
-h1 {
-    font-family: 'Forum', serif;
-    text-align: center;
-    font-size: 28px;
-    margin-bottom: 25px;
-    color: #5c4033;
+.container{
+width:92%;
+max-width:420px;
 }
 
-label {
-    font-size: 14px;
-    margin-top: 12px;
-    display: block;
+/* ==============================
+   TITULO
+============================== */
+
+h1{
+font-family:'Forum',serif;
+text-align:center;
+font-size:30px;
+margin-bottom:20px;
+color:var(--primary);
 }
 
-input {
-    width: 100%;
-    padding: 10px;
-    margin-top: 5px;
-    border-radius: 10px;
-    border: 1px solid #d8cfc4;
-    font-size: 16px;
-    box-sizing: border-box;
+/* ==============================
+   CARD
+============================== */
+
+.card{
+background:var(--card);
+border-radius:22px;
+padding:24px;
+box-shadow:var(--shadow);
 }
 
-button {
-    margin-top: 20px;
-    width: 100%;
-    padding: 12px;
-    border-radius: 15px;
-    border: none;
-    background-color: #8b6f47;
-    color: white;
-    font-size: 16px;
-    font-weight: bold;
+/* ==============================
+   INPUTS
+============================== */
+
+.field{
+margin-bottom:16px;
 }
 
-button:active {
-    background-color: #6b4f4f;
+label{
+font-size:14px;
+display:block;
+margin-bottom:6px;
+color:var(--primary);
 }
 
-.results {
-    margin-top: 25px;
-    padding: 15px;
-    border-radius: 15px;
-    background: #f1e6d6;
-    font-size: 15px;
+input{
+width:100%;
+padding:14px;
+border-radius:14px;
+border:none;
+background:#f1e8df;
+font-size:16px;
+outline:none;
 }
 
-.warning {
-    color: #a94442;
-    margin-top: 10px;
+/* ==============================
+   BOTON
+============================== */
+
+button{
+width:100%;
+margin-top:10px;
+padding:16px;
+border:none;
+border-radius:18px;
+font-size:16px;
+background:var(--primary);
+color:white;
+cursor:pointer;
+font-family:'Questrial',sans-serif;
 }
 
-.footer {
-    text-align: center;
-    margin-top: 40px;
-    font-family: 'Forum', serif;
-    color: #6b4f4f;
+/* ==============================
+   RESULTADO
+============================== */
+
+.result{
+margin-top:22px;
+background:#f8f1ea;
+padding:18px;
+border-radius:18px;
+font-size:15px;
+line-height:1.6;
+display:none;
 }
 
-.signature {
-    margin-top: 5px;
-    letter-spacing: 4px;
+.result b{
+color:#5e4632;
 }
+
+/* ==============================
+   FOOTER
+============================== */
+
+footer{
+text-align:center;
+margin-top:18px;
+font-size:12px;
+color:#7b5f46;
+}
+
 </style>
 </head>
 
 <body>
 
-<div class="app">
+<div class="container">
 
-<h1>Calculadora 🤎💉</h1>
+<h1>Calculadora de Insulina🤎💉</h1>
 
+<div class="card">
+
+<div class="field">
 <label>Glucosa actual (mg/dL)</label>
-<input type="number" inputmode="decimal" id="glucose">
-
-<label>Carbohidratos (g)</label>
-<input type="number" step="0.1" inputmode="decimal" id="carbs">
-
-<label>Grasas (g)</label>
-<input type="number" step="0.1" inputmode="decimal" id="fat">
-
-<label>Proteínas (g)</label>
-<input type="number" step="0.1" inputmode="decimal" id="protein">
-
-<label>Último bolo (unidades)</label>
-<input type="number" step="0.1" inputmode="decimal" id="lastBolus">
-
-<label>Tiempo desde último bolo</label>
-<input type="time" id="timeBolus">
-
-<button onclick="calcular()">Calcular dosis 🤎</button>
-
-<div class="results" id="results"></div>
-
-<div class="footer">
-    <div>de mi para mi 🤎</div>
-    <div class="signature">ⒾⓅⓈ</div>
+<input id="glucose" type="number" inputmode="decimal">
 </div>
+
+<div class="field">
+<label>Carbohidratos (g)</label>
+<input id="carbs" type="number" step="0.1" inputmode="decimal">
+</div>
+
+<div class="field">
+<label>Grasas (g)</label>
+<input id="fat" type="number" step="0.1" inputmode="decimal">
+</div>
+
+<div class="field">
+<label>Proteínas (g)</label>
+<input id="protein" type="number" step="0.1" inputmode="decimal">
+</div>
+
+<button onclick="calculate()">Calcular</button>
+
+<div id="result" class="result"></div>
+
+</div>
+
+<footer>
+de mi para mi 🤎<br>
+ⒾⓅⓈ
+</footer>
 
 </div>
 
 <script>
-const ISF = 40;
-const ICR = 10;
-const DIA = 4;
-const TARGET = 90;
 
-function roundHalf(num) {
-    return Math.round(num * 2) / 2;
+/* ==============================
+CONFIGURACIÓN
+============================== */
+
+const target = 90;
+const correctionFactor = 40;
+const fatThreshold = 20;
+
+/* ==============================
+RATIO SEGÚN HORA
+============================== */
+
+function getRatio(){
+
+const hour = new Date().getHours();
+
+if(hour >=7 && hour <10) return 6;
+if(hour >=12 && hour <15) return 7;
+if(hour >=18 && hour <22) return 7;
+
+return 7;
+
 }
 
-function calcularCorreccion(glucose) {
-    if (glucose < 70) return 0;
-    if (glucose <= TARGET) return 0;
-    return (glucose - TARGET) / ISF;
+/* ==============================
+PREBOLUS
+============================== */
+
+function getPrebolus(glucose){
+
+if(glucose >=90 && glucose <=120) return "10 min";
+if(glucose >120 && glucose <=180) return "15 min";
+if(glucose >180 && glucose <=220) return "20 min";
+if(glucose >220) return "25 min";
+
+return "0 min";
+
 }
 
-function calcularCarbsNecesarios(glucose) {
-    if (glucose >= 70) return 0;
-    return ((TARGET - glucose) / ISF) * ICR;
+/* ==============================
+FORMATEAR HORA
+============================== */
+
+function formatTime(date){
+
+const h = date.getHours().toString().padStart(2,"0");
+const m = date.getMinutes().toString().padStart(2,"0");
+
+return `${h}:${m}`;
+
 }
 
-function calcularComida(carbs) {
-    return carbs / ICR;
+/* ==============================
+CALCULO PRINCIPAL
+============================== */
+
+function calculate(){
+
+const glucose = parseFloat(document.getElementById("glucose").value) || 0;
+const carbs = parseFloat(document.getElementById("carbs").value) || 0;
+const fat = parseFloat(document.getElementById("fat").value) || 0;
+const protein = parseFloat(document.getElementById("protein").value) || 0;
+
+const ratio = getRatio();
+
+/* Insulina por carbohidratos */
+
+let insulinCarbs = carbs / ratio;
+
+/* Estimación simple FPU */
+
+const caloriesFat = fat * 9;
+const caloriesProtein = protein * 4;
+const fpu = (caloriesFat + caloriesProtein)/100;
+const fpuInsulin = fpu * 0.5;
+
+insulinCarbs += fpuInsulin;
+
+/* Corrección */
+
+let correction = 0;
+
+if(glucose > target){
+correction = (glucose - target) / correctionFactor;
 }
 
-function calcularFPU(fat, protein) {
-    let calories = (fat * 9) + (protein * 4);
-    let FPU = calories / 100;
-    let unidadesTeoricas = (FPU * 10) / ICR;
-    return unidadesTeoricas * 0.5;
+/* Dosis total */
+
+const total = insulinCarbs + correction;
+
+/* Prebolus */
+
+const prebolus = getPrebolus(glucose);
+
+/* Mensajes */
+
+let message = "";
+
+/* Hipoglucemia */
+
+if(glucose < 70){
+
+const neededCarbs = ((target - glucose)/correctionFactor) * ratio;
+
+message += `⚠️ <b>Glucosa baja.</b><br>
+Consumir aproximadamente <b>${neededCarbs.toFixed(1)} g</b> de carbohidratos antes de aplicar insulina.<br><br>`;
+
 }
 
-function calcularIOB(lastBolus, hoursElapsed) {
-    if (hoursElapsed >= DIA) return 0;
-    return lastBolus * Math.pow((1 - (hoursElapsed / DIA)), 2);
+/* Glucosa alta */
+
+if(glucose > 250){
+
+message += `⚠️ <b>Glucosa muy alta.</b><br>
+Considerar aplicar corrección y esperar antes de comenzar a comer.<br><br>`;
+
 }
 
-function calcular() {
-    let glucose = parseFloat(document.getElementById("glucose").value) || 0;
-    let carbs = parseFloat(document.getElementById("carbs").value) || 0;
-    let fat = parseFloat(document.getElementById("fat").value) || 0;
-    let protein = parseFloat(document.getElementById("protein").value) || 0;
-    let lastBolus = parseFloat(document.getElementById("lastBolus").value) || 0;
+/* Resultado base */
 
-    let timeInput = document.getElementById("timeBolus").value;
-    let hoursElapsed = 0;
+let resultHTML = `
+<b>🍞 Insulina por carbohidratos:</b> ${insulinCarbs.toFixed(2)} U<br>
+<b>🩸 Corrección:</b> ${correction.toFixed(2)} U<br>
+<b>💉 Dosis total:</b> ${total.toFixed(2)} U<br>
+<b>⏱️ Pre-bolus recomendado:</b> ${prebolus}<br>
+`;
 
-    if (timeInput) {
-        let parts = timeInput.split(":");
-        hoursElapsed = parseInt(parts[0]) + (parseInt(parts[1]) / 60);
-    }
+/* Comida alta en grasa */
 
-    let correccion = calcularCorreccion(glucose);
-    let carbsNecesarios = calcularCarbsNecesarios(glucose);
-    let comida = calcularComida(carbs);
-    let ajuste = calcularFPU(fat, protein);
-    let IOB = calcularIOB(lastBolus, hoursElapsed);
+if(fat >= fatThreshold){
 
-    let total = correccion - IOB + comida + ajuste;
-    if (total < 0) total = 0;
-    total = roundHalf(total);
+const nowDose = total * 0.7;
+const laterDose = total * 0.3;
 
-    let warning = "";
+const laterTime = new Date(Date.now() + 90*60000);
 
-    if (glucose < 70) {
-        warning = "⚠️ Glucosa baja. Consumir aprox. " + 
-        Math.round(carbsNecesarios) + 
-        " g antes de aplicar insulina.";
-    }
+resultHTML += `
+<br>
+<b>🥑 Comida alta en grasa</b><br>
+<b>💉 Aplicar ahora:</b> ${nowDose.toFixed(2)} U<br>
+<b>💉 Bolo extra:</b> ${laterDose.toFixed(2)} U a las ${formatTime(laterTime)}<br>
+`;
 
-    if (glucose > 250) {
-        warning = "⚠️ Glucosa alta. Considerar medir cetonas.";
-    }
+}else{
 
-    document.getElementById("results").innerHTML = `
-        Corrección: ${roundHalf(correccion)} u<br>
-        Comida: ${roundHalf(comida)} u<br>
-        Ajuste grasa/proteína: ${roundHalf(ajuste)} u<br>
-        IOB estimada: ${roundHalf(IOB)} u<br><br>
-        <strong>Total sugerido: ${total} u 💉</strong>
-        <div class="warning">${warning}</div>
-    `;
+resultHTML += `
+<br>
+<b>💉 Aplicar ahora:</b> ${total.toFixed(2)} U
+`;
+
 }
+
+/* Mostrar resultado */
+
+const resultBox = document.getElementById("result");
+
+resultBox.innerHTML = message + resultHTML;
+resultBox.style.display = "block";
+
+/* Vibración suave iPhone */
+
+if(navigator.vibrate){
+navigator.vibrate(20);
+}
+
+}
+
 </script>
 
 </body>
