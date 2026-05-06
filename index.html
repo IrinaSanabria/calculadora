@@ -6,15 +6,9 @@
 
 <title>Calculadora de Insulina</title>
 
-<!-- Google Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Forum&family=Questrial&display=swap" rel="stylesheet">
 
 <style>
-
-/* ==============================
-   COLORES
-============================== */
-
 :root{
 --bg:#f4ede6;
 --card:#fffaf4;
@@ -23,10 +17,6 @@
 --text:#4a3a2a;
 --shadow:0 10px 24px rgba(0,0,0,0.08);
 }
-
-/* ==============================
-   BASE
-============================== */
 
 body{
 margin:0;
@@ -41,44 +31,32 @@ min-height:100vh;
 
 .container{
 width:92%;
-max-width:420px;
+max-width:430px;
 }
-
-/* ==============================
-   TITULO
-============================== */
 
 h1{
 font-family:'Forum',serif;
 text-align:center;
 font-size:30px;
-margin-bottom:20px;
+margin-bottom:18px;
 color:var(--primary);
 }
-
-/* ==============================
-   CARD
-============================== */
 
 .card{
 background:var(--card);
 border-radius:22px;
-padding:24px;
+padding:22px;
 box-shadow:var(--shadow);
 }
 
-/* ==============================
-   INPUTS
-============================== */
-
 .field{
-margin-bottom:16px;
+margin-bottom:14px;
 }
 
 label{
-font-size:14px;
+font-size:13px;
 display:block;
-margin-bottom:6px;
+margin-bottom:5px;
 color:var(--primary);
 }
 
@@ -92,13 +70,29 @@ font-size:16px;
 outline:none;
 }
 
-/* ==============================
-   BOTON
-============================== */
+.chips{
+display:flex;
+flex-wrap:wrap;
+gap:8px;
+margin-top:6px;
+}
+
+.chip{
+padding:10px 12px;
+border-radius:20px;
+background:#f1e8df;
+font-size:13px;
+cursor:pointer;
+}
+
+.chip.active{
+background:var(--primary);
+color:#fff;
+}
 
 button{
 width:100%;
-margin-top:10px;
+margin-top:12px;
 padding:16px;
 border:none;
 border-radius:18px;
@@ -106,38 +100,30 @@ font-size:16px;
 background:var(--primary);
 color:white;
 cursor:pointer;
-font-family:'Questrial',sans-serif;
 }
 
-/* ==============================
-   RESULTADO
-============================== */
-
 .result{
-margin-top:22px;
+margin-top:20px;
 background:#f8f1ea;
 padding:18px;
 border-radius:18px;
 font-size:15px;
 line-height:1.6;
 display:none;
+animation:fadeIn .4s ease;
 }
 
-.result b{
-color:#5e4632;
+@keyframes fadeIn{
+from{opacity:0; transform:translateY(10px);}
+to{opacity:1; transform:translateY(0);}
 }
-
-/* ==============================
-   FOOTER
-============================== */
 
 footer{
 text-align:center;
-margin-top:18px;
+margin-top:16px;
 font-size:12px;
 color:#7b5f46;
 }
-
 </style>
 </head>
 
@@ -169,6 +155,17 @@ color:#7b5f46;
 <input id="protein" type="number" step="0.1" inputmode="decimal">
 </div>
 
+<div class="field">
+<label>Tendencia</label>
+<div class="chips" id="trendSelector">
+<div class="chip active" data-value="stable">➡️</div>
+<div class="chip" data-value="upSlow">↗️</div>
+<div class="chip" data-value="upFast">⬆️</div>
+<div class="chip" data-value="downSlow">↘️</div>
+<div class="chip" data-value="downFast">⬇️</div>
+</div>
+</div>
+
 <button onclick="calculate()">Calcular</button>
 
 <div id="result" class="result"></div>
@@ -184,172 +181,263 @@ de mi para mi 🤎<br>
 
 <script>
 
-/* ==============================
-CONFIGURACIÓN
-============================== */
+/* ================= CONFIG ================= */
 
 const target = 90;
 const correctionFactor = 40;
-const fatThreshold = 20;
+const insulinDuration = 4; // horas
 
-/* ==============================
-RATIO SEGÚN HORA
-============================== */
+/* ================= HELPERS ================= */
 
 function getRatio(){
-
-const hour = new Date().getHours();
-
-if(hour >=7 && hour <10) return 6;
-if(hour >=12 && hour <15) return 7;
-if(hour >=18 && hour <22) return 7;
-
+const h = new Date().getHours();
+if(h>=7 && h<10) return 6;
+if(h>=12 && h<15) return 7;
+if(h>=18 && h<22) return 7;
 return 7;
+}
+
+function getTrend(){
+return document.querySelector(".chip.active").dataset.value;
+}
+
+function getTrendAdjustment(type,value){
+
+switch(type){
+case "upFast": return value * 1.15;
+case "upSlow": return value * 1.10;
+case "downSlow": return value * 0.90;
+case "downFast": return value * 0.80;
+default: return value;
+}
 
 }
 
-/* ==============================
-PREBOLUS
-============================== */
+function getPrebolus(glucose,trend){
 
-function getPrebolus(glucose){
+let base = 0;
 
-if(glucose >=90 && glucose <=120) return "10 min";
-if(glucose >120 && glucose <=180) return "15 min";
-if(glucose >180 && glucose <=220) return "20 min";
-if(glucose >220) return "25 min";
+if(glucose>=90 && glucose<=120) base = 10;
+else if(glucose<=180) base = 15;
+else if(glucose<=220) base = 20;
+else if(glucose>220) base = 25;
 
-return "0 min";
+if(trend==="upFast" || trend==="upSlow") base +=5;
+if(trend==="downFast" || trend==="downSlow") base -=5;
+
+return Math.max(base,0)+" min";
 
 }
-
-/* ==============================
-FORMATEAR HORA
-============================== */
 
 function formatTime(date){
+return date.getHours().toString().padStart(2,"0")+":"+date.getMinutes().toString().padStart(2,"0");
+}
 
-const h = date.getHours().toString().padStart(2,"0");
-const m = date.getMinutes().toString().padStart(2,"0");
+/* ================= IOB ================= */
 
-return `${h}:${m}`;
+function getIOB(){
+
+const history = JSON.parse(localStorage.getItem("iobHistory")||"[]");
+let iob = 0;
+const now = Date.now();
+
+history.forEach(entry=>{
+const t = (now-entry.time)/3600000;
+if(t<insulinDuration){
+const remain = 1-(t/insulinDuration);
+iob += entry.units * remain;
+}
+});
+
+return iob;
 
 }
 
-/* ==============================
-CALCULO PRINCIPAL
-============================== */
+function saveIOB(units){
+let h = JSON.parse(localStorage.getItem("iobHistory")||"[]");
+h.push({units:units,time:Date.now()});
+localStorage.setItem("iobHistory",JSON.stringify(h));
+}
+
+/* ================= BOLO PENDIENTE ================= */
+
+function getPendingBolus(){
+
+const pending = JSON.parse(localStorage.getItem("pendingBolus")||"null");
+if(!pending) return 0;
+
+const now = Date.now();
+const elapsed = now - pending.time;
+const total = 90*60000;
+
+if(elapsed>=total){
+localStorage.removeItem("pendingBolus");
+return 0;
+}
+
+const remainingRatio = 1 - (elapsed/total);
+return pending.units * remainingRatio;
+
+}
+
+function savePendingBolus(units){
+localStorage.setItem("pendingBolus",JSON.stringify({
+units:units,
+time:Date.now()
+}));
+}
+
+/* ================= PERSISTENCIA ================= */
+
+function saveInputs(){
+localStorage.setItem("inputs",JSON.stringify({
+glucose:glucose.value,
+carbs:carbs.value,
+fat:fat.value,
+protein:protein.value,
+trend:getTrend()
+}));
+}
+
+function loadInputs(){
+const data = JSON.parse(localStorage.getItem("inputs")||"null");
+if(!data) return;
+
+glucose.value = data.glucose;
+carbs.value = data.carbs;
+fat.value = data.fat;
+protein.value = data.protein;
+
+document.querySelectorAll(".chip").forEach(c=>{
+c.classList.remove("active");
+if(c.dataset.value===data.trend) c.classList.add("active");
+});
+}
+
+/* ================= CALCULO ================= */
 
 function calculate(){
 
-const glucose = parseFloat(document.getElementById("glucose").value) || 0;
-const carbs = parseFloat(document.getElementById("carbs").value) || 0;
-const fat = parseFloat(document.getElementById("fat").value) || 0;
-const protein = parseFloat(document.getElementById("protein").value) || 0;
-
+const g = parseFloat(glucose.value)||0;
+const c = parseFloat(carbs.value)||0;
+const f = parseFloat(fat.value)||0;
+const p = parseFloat(protein.value)||0;
+const trend = getTrend();
 const ratio = getRatio();
 
-/* Insulina por carbohidratos */
+/* FPU */
 
-let insulinCarbs = carbs / ratio;
-
-/* Estimación simple FPU */
-
-const caloriesFat = fat * 9;
-const caloriesProtein = protein * 4;
-const fpu = (caloriesFat + caloriesProtein)/100;
+const fpu = ((f*9)+(p*4))/100;
 const fpuInsulin = fpu * 0.5;
 
-insulinCarbs += fpuInsulin;
+/* CARBS */
 
-/* Corrección */
+let insulinCarbs = (c/ratio) + fpuInsulin;
+
+/* CORRECCION */
 
 let correction = 0;
-
-if(glucose > target){
-correction = (glucose - target) / correctionFactor;
+if(g>target){
+correction = (g-target)/correctionFactor;
+correction = getTrendAdjustment(trend,correction);
 }
 
-/* Dosis total */
+/* RESTAR IOB SOLO A CORRECCION */
 
-const total = insulinCarbs + correction;
+const iob = getIOB();
+correction = Math.max(correction - iob,0);
 
-/* Prebolus */
+/* SUMAR BOLO PENDIENTE */
 
-const prebolus = getPrebolus(glucose);
+const pending = getPendingBolus();
 
-/* Mensajes */
+/* TOTAL */
 
-let message = "";
+let total = insulinCarbs + correction + pending;
 
-/* Hipoglucemia */
+/* PREBOLUS */
 
-if(glucose < 70){
+const pre = getPrebolus(g,trend);
 
-const neededCarbs = ((target - glucose)/correctionFactor) * ratio;
+/* MENSAJES */
 
-message += `⚠️ <b>Glucosa baja.</b><br>
-Consumir aproximadamente <b>${neededCarbs.toFixed(1)} g</b> de carbohidratos antes de aplicar insulina.<br><br>`;
+let msg = "";
+
+/* HIPO */
+
+if(g<70){
+
+const neededCarbs = ((target-g)/correctionFactor)*ratio;
+
+msg += `⚠️ <b>Glucosa baja</b><br>
+Consumir <b>${neededCarbs.toFixed(1)} g</b> de carbohidratos.<br>
+Aplicar insulina luego de estabilizar.<br><br>`;
 
 }
 
-/* Glucosa alta */
+/* HIPER */
 
-if(glucose > 250){
-
-message += `⚠️ <b>Glucosa muy alta.</b><br>
-Considerar aplicar corrección y esperar antes de comenzar a comer.<br><br>`;
-
+if(g>250){
+msg += `⚠️ <b>Glucosa muy alta</b><br>
+Considerar corregir antes de comer.<br><br>`;
 }
 
-/* Resultado base */
+/* RESULTADO BASE */
 
-let resultHTML = `
-<b>🍞 Insulina por carbohidratos:</b> ${insulinCarbs.toFixed(2)} U<br>
-<b>🩸 Corrección:</b> ${correction.toFixed(2)} U<br>
-<b>💉 Dosis total:</b> ${total.toFixed(2)} U<br>
-<b>⏱️ Pre-bolus recomendado:</b> ${prebolus}<br>
+let html = `
+🍞 <b>Insulina por carbohidratos:</b> ${insulinCarbs.toFixed(2)} U<br>
+🩸 <b>Corrección:</b> ${correction.toFixed(2)} U<br>
+💉 <b>Dosis total:</b> ${total.toFixed(2)} U<br>
+⏱️ <b>Pre-bolus:</b> ${pre}<br>
 `;
 
-/* Comida alta en grasa */
+/* GRASA (trigger por FPU) */
 
-if(fat >= fatThreshold){
+if(fpu>1){
 
 const nowDose = total * 0.7;
 const laterDose = total * 0.3;
 
-const laterTime = new Date(Date.now() + 90*60000);
+const laterTime = new Date(Date.now()+90*60000);
 
-resultHTML += `
-<br>
-<b>🥑 Comida alta en grasa</b><br>
-<b>💉 Aplicar ahora:</b> ${nowDose.toFixed(2)} U<br>
-<b>💉 Bolo extra:</b> ${laterDose.toFixed(2)} U a las ${formatTime(laterTime)}<br>
-`;
+html += `<br>🥑 <b>Comida alta en grasa</b><br>
+💉 Ahora: <b>${nowDose.toFixed(2)} U</b><br>
+💉 Después: <b>${laterDose.toFixed(2)} U</b> a las ${formatTime(laterTime)}<br>`;
+
+savePendingBolus(laterDose);
 
 }else{
 
-resultHTML += `
-<br>
-<b>💉 Aplicar ahora:</b> ${total.toFixed(2)} U
-`;
+html += `<br>💉 Aplicar ahora: <b>${total.toFixed(2)} U</b>`;
+}
+
+/* SHOW */
+
+result.innerHTML = msg + html;
+result.style.display="block";
+result.scrollIntoView({behavior:"smooth"});
+
+/* GUARDAR */
+
+saveIOB(total);
+saveInputs();
+
+/* HAPTIC */
+
+if(navigator.vibrate) navigator.vibrate(20);
 
 }
 
-/* Mostrar resultado */
+/* ================= UI ================= */
 
-const resultBox = document.getElementById("result");
+document.querySelectorAll(".chip").forEach(chip=>{
+chip.addEventListener("click",()=>{
+document.querySelectorAll(".chip").forEach(c=>c.classList.remove("active"));
+chip.classList.add("active");
+});
+});
 
-resultBox.innerHTML = message + resultHTML;
-resultBox.style.display = "block";
-
-/* Vibración suave iPhone */
-
-if(navigator.vibrate){
-navigator.vibrate(20);
-}
-
-}
+loadInputs();
 
 </script>
 
