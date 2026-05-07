@@ -83,6 +83,7 @@ border-radius:20px;
 background:#f1e8df;
 font-size:13px;
 cursor:pointer;
+transition:0.2s;
 }
 
 .chip.active{
@@ -100,6 +101,7 @@ font-size:16px;
 background:var(--primary);
 color:white;
 cursor:pointer;
+font-family:'Questrial',sans-serif;
 }
 
 .result{
@@ -108,14 +110,20 @@ background:#f8f1ea;
 padding:18px;
 border-radius:18px;
 font-size:15px;
-line-height:1.6;
+line-height:1.7;
 display:none;
 animation:fadeIn .4s ease;
 }
 
 @keyframes fadeIn{
-from{opacity:0; transform:translateY(10px);}
-to{opacity:1; transform:translateY(0);}
+from{
+opacity:0;
+transform:translateY(10px);
+}
+to{
+opacity:1;
+transform:translateY(0);
+}
 }
 
 footer{
@@ -157,12 +165,15 @@ color:#7b5f46;
 
 <div class="field">
 <label>Tendencia</label>
-<div class="chips" id="trendSelector">
+
+<div class="chips">
+
 <div class="chip active" data-value="stable">➡️</div>
 <div class="chip" data-value="upSlow">↗️</div>
-<div class="chip" data-value="upFast">⬆️</div>
+<div class="chip" data-value="upFast">⬆️📈</div>
 <div class="chip" data-value="downSlow">↘️</div>
-<div class="chip" data-value="downFast">⬇️</div>
+<div class="chip" data-value="downFast">⬇️📉</div>
+
 </div>
 </div>
 
@@ -181,126 +192,215 @@ de mi para mi 🤎<br>
 
 <script>
 
-/* ================= CONFIG ================= */
+/* =========================
+CONFIG
+========================= */
 
 const target = 90;
 const correctionFactor = 40;
-const insulinDuration = 4; // horas
+const insulinDuration = 4;
 
-/* ================= HELPERS ================= */
+/* =========================
+RATIO
+========================= */
 
 function getRatio(){
+
 const h = new Date().getHours();
-if(h>=7 && h<10) return 6;
-if(h>=12 && h<15) return 7;
-if(h>=18 && h<22) return 7;
+
+if(h >= 7 && h < 10) return 6;
+if(h >= 12 && h < 15) return 7;
+if(h >= 18 && h < 22) return 7;
+
 return 7;
+
 }
+
+/* =========================
+TREND
+========================= */
 
 function getTrend(){
+
 return document.querySelector(".chip.active").dataset.value;
-}
-
-function getTrendAdjustment(type,value){
-
-switch(type){
-case "upFast": return value * 1.15;
-case "upSlow": return value * 1.10;
-case "downSlow": return value * 0.90;
-case "downFast": return value * 0.80;
-default: return value;
-}
 
 }
+
+function adjustCorrection(correction,trend){
+
+switch(trend){
+
+case "upFast":
+return correction * 1.15;
+
+case "upSlow":
+return correction * 1.10;
+
+case "downSlow":
+return correction * 0.90;
+
+case "downFast":
+return correction * 0.80;
+
+default:
+return correction;
+
+}
+
+}
+
+/* =========================
+PREBOLUS
+========================= */
 
 function getPrebolus(glucose,trend){
 
 let base = 0;
 
-if(glucose>=90 && glucose<=120) base = 10;
-else if(glucose<=180) base = 15;
-else if(glucose<=220) base = 20;
-else if(glucose>220) base = 25;
+if(glucose >= 90 && glucose <= 120){
+base = 10;
+}
+else if(glucose <= 180){
+base = 15;
+}
+else if(glucose <= 220){
+base = 20;
+}
+else if(glucose > 220){
+base = 25;
+}
 
-if(trend==="upFast" || trend==="upSlow") base +=5;
-if(trend==="downFast" || trend==="downSlow") base -=5;
+if(trend === "upFast" || trend === "upSlow"){
+base += 5;
+}
 
-return Math.max(base,0)+" min";
+if(trend === "downFast" || trend === "downSlow"){
+base -= 5;
+}
+
+return Math.max(base,0) + " min";
 
 }
+
+/* =========================
+FORMATO HORA
+========================= */
 
 function formatTime(date){
-return date.getHours().toString().padStart(2,"0")+":"+date.getMinutes().toString().padStart(2,"0");
+
+const h = date.getHours().toString().padStart(2,"0");
+const m = date.getMinutes().toString().padStart(2,"0");
+
+return `${h}:${m}`;
+
 }
 
-/* ================= IOB ================= */
+/* =========================
+IOB INFORMATIVO
+========================= */
 
-function getIOB(){
+function getActiveInsulin(){
 
-const history = JSON.parse(localStorage.getItem("iobHistory")||"[]");
-let iob = 0;
+const history = JSON.parse(localStorage.getItem("iobHistory") || "[]");
+
+let active = 0;
+
 const now = Date.now();
 
 history.forEach(entry=>{
-const t = (now-entry.time)/3600000;
-if(t<insulinDuration){
-const remain = 1-(t/insulinDuration);
-iob += entry.units * remain;
+
+const elapsed = (now - entry.time) / 3600000;
+
+if(elapsed < insulinDuration){
+
+const remaining = 1 - (elapsed / insulinDuration);
+
+active += entry.units * remaining;
+
 }
+
 });
 
-return iob;
+return active;
 
 }
 
-function saveIOB(units){
-let h = JSON.parse(localStorage.getItem("iobHistory")||"[]");
-h.push({units:units,time:Date.now()});
-localStorage.setItem("iobHistory",JSON.stringify(h));
+function saveCorrection(correction){
+
+if(correction <= 0) return;
+
+let history = JSON.parse(localStorage.getItem("iobHistory") || "[]");
+
+history.push({
+units:correction,
+time:Date.now()
+});
+
+localStorage.setItem("iobHistory",JSON.stringify(history));
+
 }
 
-/* ================= BOLO PENDIENTE ================= */
+/* =========================
+BOLO PENDIENTE
+========================= */
 
 function getPendingBolus(){
 
-const pending = JSON.parse(localStorage.getItem("pendingBolus")||"null");
+const pending = JSON.parse(localStorage.getItem("pendingBolus") || "null");
+
 if(!pending) return 0;
 
 const now = Date.now();
-const elapsed = now - pending.time;
-const total = 90*60000;
 
-if(elapsed>=total){
+const elapsed = now - pending.time;
+
+const totalTime = 90 * 60000;
+
+if(elapsed >= totalTime){
+
 localStorage.removeItem("pendingBolus");
+
 return 0;
+
 }
 
-const remainingRatio = 1 - (elapsed/total);
+const remainingRatio = 1 - (elapsed / totalTime);
+
 return pending.units * remainingRatio;
 
 }
 
 function savePendingBolus(units){
+
 localStorage.setItem("pendingBolus",JSON.stringify({
 units:units,
 time:Date.now()
 }));
+
 }
 
-/* ================= PERSISTENCIA ================= */
+/* =========================
+PERSISTENCIA
+========================= */
 
 function saveInputs(){
+
 localStorage.setItem("inputs",JSON.stringify({
+
 glucose:glucose.value,
 carbs:carbs.value,
 fat:fat.value,
 protein:protein.value,
 trend:getTrend()
+
 }));
+
 }
 
 function loadInputs(){
-const data = JSON.parse(localStorage.getItem("inputs")||"null");
+
+const data = JSON.parse(localStorage.getItem("inputs") || "null");
+
 if(!data) return;
 
 glucose.value = data.glucose;
@@ -308,133 +408,205 @@ carbs.value = data.carbs;
 fat.value = data.fat;
 protein.value = data.protein;
 
-document.querySelectorAll(".chip").forEach(c=>{
-c.classList.remove("active");
-if(c.dataset.value===data.trend) c.classList.add("active");
-});
+document.querySelectorAll(".chip").forEach(chip=>{
+
+chip.classList.remove("active");
+
+if(chip.dataset.value === data.trend){
+
+chip.classList.add("active");
+
 }
 
-/* ================= CALCULO ================= */
+});
+
+}
+
+/* =========================
+CALCULO
+========================= */
 
 function calculate(){
 
-const g = parseFloat(glucose.value)||0;
-const c = parseFloat(carbs.value)||0;
-const f = parseFloat(fat.value)||0;
-const p = parseFloat(protein.value)||0;
+const glucoseValue = parseFloat(glucose.value) || 0;
+const carbsValue = parseFloat(carbs.value) || 0;
+const fatValue = parseFloat(fat.value) || 0;
+const proteinValue = parseFloat(protein.value) || 0;
+
 const trend = getTrend();
+
 const ratio = getRatio();
 
 /* FPU */
 
-const fpu = ((f*9)+(p*4))/100;
+const fpu = ((fatValue * 9) + (proteinValue * 4)) / 100;
+
 const fpuInsulin = fpu * 0.5;
 
 /* CARBS */
 
-let insulinCarbs = (c/ratio) + fpuInsulin;
+const insulinCarbs = (carbsValue / ratio) + fpuInsulin;
 
 /* CORRECCION */
 
 let correction = 0;
-if(g>target){
-correction = (g-target)/correctionFactor;
-correction = getTrendAdjustment(trend,correction);
+
+if(glucoseValue > target){
+
+correction = (glucoseValue - target) / correctionFactor;
+
+correction = adjustCorrection(correction,trend);
+
 }
 
-/* RESTAR IOB SOLO A CORRECCION */
+/* BOLO PENDIENTE */
 
-const iob = getIOB();
-correction = Math.max(correction - iob,0);
-
-/* SUMAR BOLO PENDIENTE */
-
-const pending = getPendingBolus();
+const pendingBolus = getPendingBolus();
 
 /* TOTAL */
 
-let total = insulinCarbs + correction + pending;
+const total = insulinCarbs + correction + pendingBolus;
 
 /* PREBOLUS */
 
-const pre = getPrebolus(g,trend);
+const prebolus = getPrebolus(glucoseValue,trend);
+
+/* INSULINA ACTIVA */
+
+const activeInsulin = getActiveInsulin();
 
 /* MENSAJES */
 
-let msg = "";
+let warnings = "";
 
 /* HIPO */
 
-if(g<70){
+if(glucoseValue < 70){
 
-const neededCarbs = ((target-g)/correctionFactor)*ratio;
+const neededCarbs = ((target - glucoseValue) / correctionFactor) * ratio;
 
-msg += `⚠️ <b>Glucosa baja</b><br>
-Consumir <b>${neededCarbs.toFixed(1)} g</b> de carbohidratos.<br>
-Aplicar insulina luego de estabilizar.<br><br>`;
+warnings += `
+⚠️ <b>Glucosa baja</b><br>
+Consumir aproximadamente <b>${neededCarbs.toFixed(1)} g</b> de carbohidratos antes de corregir.<br>
+Luego considerar aplicar únicamente la corrección correspondiente.<br><br>
+`;
 
 }
 
 /* HIPER */
 
-if(g>250){
-msg += `⚠️ <b>Glucosa muy alta</b><br>
-Considerar corregir antes de comer.<br><br>`;
-}
+if(glucoseValue > 250){
 
-/* RESULTADO BASE */
-
-let html = `
-🍞 <b>Insulina por carbohidratos:</b> ${insulinCarbs.toFixed(2)} U<br>
-🩸 <b>Corrección:</b> ${correction.toFixed(2)} U<br>
-💉 <b>Dosis total:</b> ${total.toFixed(2)} U<br>
-⏱️ <b>Pre-bolus:</b> ${pre}<br>
+warnings += `
+⚠️ <b>Glucosa muy alta</b><br>
+Considerar corregir y esperar antes de comenzar a comer.<br><br>
 `;
 
-/* GRASA (trigger por FPU) */
+}
 
-if(fpu>1){
+/* RESULTADO */
+
+let html = `
+
+🍞 <b>Insulina por carbohidratos:</b> ${insulinCarbs.toFixed(2)} U<br>
+
+🩸 <b>Corrección:</b> ${correction.toFixed(2)} U<br>
+
+💉 <b>Dosis total:</b> ${total.toFixed(2)} U<br>
+
+⏱️ <b>Pre-bolus recomendado:</b> ${prebolus}<br>
+
+`;
+
+/* INSULINA ACTIVA */
+
+if(activeInsulin > 0.1){
+
+html += `
+<br>
+✨ <b>Insulina que seguiría activa:</b> ${activeInsulin.toFixed(2)} U<br>
+`;
+
+}
+
+/* COMIDA GRASA */
+
+if(fpu > 1){
 
 const nowDose = total * 0.7;
+
 const laterDose = total * 0.3;
 
-const laterTime = new Date(Date.now()+90*60000);
+const laterTime = new Date(Date.now() + (90 * 60000));
 
-html += `<br>🥑 <b>Comida alta en grasa</b><br>
-💉 Ahora: <b>${nowDose.toFixed(2)} U</b><br>
-💉 Después: <b>${laterDose.toFixed(2)} U</b> a las ${formatTime(laterTime)}<br>`;
+html += `
+
+<br>
+
+🥑 <b>Comida alta en grasa</b><br>
+
+💉 <b>Aplicar ahora:</b> ${nowDose.toFixed(2)} U<br>
+
+💉 <b>Bolo extra:</b> ${laterDose.toFixed(2)} U a las ${formatTime(laterTime)}<br>
+
+`;
 
 savePendingBolus(laterDose);
 
 }else{
 
-html += `<br>💉 Aplicar ahora: <b>${total.toFixed(2)} U</b>`;
+html += `
+
+<br>
+
+💉 <b>Aplicar ahora:</b> ${total.toFixed(2)} U
+
+`;
+
 }
 
-/* SHOW */
+/* MOSTRAR */
 
-result.innerHTML = msg + html;
-result.style.display="block";
-result.scrollIntoView({behavior:"smooth"});
+result.innerHTML = warnings + html;
+
+result.style.display = "block";
+
+result.scrollIntoView({
+behavior:"smooth"
+});
 
 /* GUARDAR */
 
-saveIOB(total);
+saveCorrection(correction);
+
 saveInputs();
 
 /* HAPTIC */
 
-if(navigator.vibrate) navigator.vibrate(20);
+if(navigator.vibrate){
+
+navigator.vibrate(20);
 
 }
 
-/* ================= UI ================= */
+}
+
+/* =========================
+UI
+========================= */
 
 document.querySelectorAll(".chip").forEach(chip=>{
+
 chip.addEventListener("click",()=>{
-document.querySelectorAll(".chip").forEach(c=>c.classList.remove("active"));
-chip.classList.add("active");
+
+document.querySelectorAll(".chip").forEach(c=>{
+c.classList.remove("active");
 });
+
+chip.classList.add("active");
+
+});
+
 });
 
 loadInputs();
